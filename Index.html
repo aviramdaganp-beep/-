@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ear Training Timer</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    body { margin: 0; background: #0b0b10; color: #f2f2f7; }
+    .wrap { max-width: 560px; margin: 0 auto; padding: 18px; }
+    .card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); border-radius: 18px; padding: 14px; }
+    h1 { margin: 6px 0 2px; font-size: 22px; }
+    .sub { color: rgba(242,242,247,.7); margin: 0 0 10px; }
+    .row { display: flex; gap: 12px; }
+    .row > * { flex: 1; }
+    .stat { text-align: center; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
+    .stat .k { font-size: 12px; color: rgba(242,242,247,.65); }
+    .stat .v { font-size: 20px; font-weight: 800; margin-top: 4px; }
+    .timerWrap { display: grid; place-items: center; padding: 8px 0 2px; }
+    .timerCircle {
+      width: 240px; height: 240px; border-radius: 50%;
+      background: conic-gradient(#f2f2f7 0deg, rgba(242,242,247,.15) 0deg);
+      display: grid; place-items: center;
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .timerInner {
+      width: 210px; height: 210px; border-radius: 50%;
+      background: #0b0b10;
+      display: grid; place-items: center;
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .time { font-size: 66px; font-weight: 900; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+    .status { margin-top: -6px; font-size: 12px; color: rgba(242,242,247,.65); text-align: center; }
+    button {
+      width: 100%;
+      padding: 14px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: #f2f2f7;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    button.primary { background: #f2f2f7; color: #0b0b10; }
+    button.danger { border-color: rgba(255,80,80,.35); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .list { margin-top: 10px; }
+    .item { display:flex; justify-content: space-between; padding: 10px 4px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .modalBack {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: none; align-items: center; justify-content: center;
+      padding: 18px;
+    }
+    .modal {
+      width: 100%; max-width: 520px;
+      background: #12121a; border: 1px solid rgba(255,255,255,.12);
+      border-radius: 18px; padding: 16px;
+    }
+    .modal h2 { margin: 6px 0 2px; }
+    .muted { color: rgba(242,242,247,.65); }
+    .small { font-size: 12px; }
+    .toggleRow { display:flex; gap: 10px; align-items:center; justify-content: space-between; }
+    input[type="checkbox"] { transform: scale(1.2); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Ear Training Timer</h1>
+      <p class="sub" id="turnLine">Turn 1 / 5</p>
+
+      <div class="timerWrap">
+        <div class="timerCircle" id="circle">
+          <div class="timerInner">
+            <div>
+              <div class="time" id="time">20</div>
+              <div class="status" id="status">Paused</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 10px;">
+        <div class="stat"><div class="k">Total</div><div class="v" id="total">0</div></div>
+        <div class="stat"><div class="k">Wrong (this turn)</div><div class="v" id="wrong">0 / 3</div></div>
+      </div>
+      <div class="row" style="margin-top: 10px;">
+        <div class="stat"><div class="k">Streak</div><div class="v" id="streak">0</div></div>
+        <div class="stat"><div class="k">Last turn</div><div class="v" id="last">—</div></div>
+      </div>
+
+      <div class="row" style="margin-top: 12px;">
+        <button class="primary" id="startBtn">Start</button>
+        <button id="resetBtn">Reset Turn</button>
+      </div>
+
+      <div class="row" style="margin-top: 10px;">
+        <button class="primary" id="correctBtn">✅ Correct</button>
+        <button class="danger" id="wrongBtn">❌ Wrong</button>
+      </div>
+
+      <div class="row" style="margin-top: 10px;">
+        <button id="newBtn">New Game</button>
+      </div>
+
+      <div class="card list" style="margin-top: 14px;">
+        <div class="toggleRow">
+          <div>
+            <div style="font-weight: 800;">Turns</div>
+            <div class="muted small">Scores per turn</div>
+          </div>
+          <label class="small muted">
+            Sounds
+            <input type="checkbox" id="soundsToggle" checked />
+          </label>
+        </div>
+        <div id="turnsList" style="margin-top: 8px;">
+          <div class="muted">No turns yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary modal -->
+  <div class="modalBack" id="modalBack">
+    <div class="modal">
+      <h2>Game Summary</h2>
+      <div class="muted" style="margin-bottom: 10px;">
+        Total Score: <b id="sumTotal">0</b> • Grade: <b id="sumGrade">—</b>
+      </div>
+      <div class="card" id="sumTurns"></div>
+      <div style="height: 12px;"></div>
+      <button class="primary" id="modalNew">New Game</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // Game constants
+  const TOTAL_TURNS = 5;
+  const TURN_DURATION = 20.0;
+
+  // State
+  let currentTurn = 1;
+  let remaining = TURN_DURATION;
+  let running = false;
+  let wrongAttempts = 0;
+  let turnScores = [];
+  let totalScore = 0;
+  let streak = 0;
+  let lastCueSecond = 999;
+
+  // Timing
+  let lastTick = null;
+  let rafId = null;
+
+  // UI refs
+  const $ = (id) => document.getElementById(id);
+  const timeEl = $("time");
+  const statusEl = $("status");
+  const turnLineEl = $("turnLine");
+  const totalEl = $("total");
+  const wrongEl = $("wrong");
+  const streakEl = $("streak");
+  const lastEl = $("last");
+  const circleEl = $("circle");
+  const turnsListEl = $("turnsList");
+
+  const startBtn = $("startBtn");
+  const resetBtn = $("resetBtn");
+  const correctBtn = $("correctBtn");
+  const wrongBtn = $("wrongBtn");
+  const newBtn = $("newBtn");
+
+  const modalBack = $("modalBack");
+  const sumTotal = $("sumTotal");
+  const sumGrade = $("sumGrade");
+  const sumTurns = $("sumTurns");
+  const modalNew = $("modalNew");
+
+  const soundsToggle = $("soundsToggle");
+
+  // Sound via WebAudio (no files needed)
+  let audioCtx = null;
+  function beep(freq=880, ms=70, vol=0.03) {
+    if (!soundsToggle.checked) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g).connect(audioCtx.destination);
+      o.start();
+      setTimeout(() => { o.stop(); }, ms);
+    } catch {}
+  }
+
+  function vibrate(pattern) {
+    // iOS Safari doesn’t support vibration, but Android does.
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  function lightTap() { vibrate(20); }
+  function successFeedback() { beep(1040, 90, 0.04); lightTap(); }
+  function failureFeedback() { beep(220, 120, 0.05); vibrate([40, 40, 60]); }
+
+  function formatTime(sec) {
+    return String(Math.max(0, Math.ceil(sec)));
+  }
+
+  function updateCircle() {
+    const progress = Math.max(0, Math.min(1, remaining / TURN_DURATION));
+    const deg = Math.round(progress * 360);
+    circleEl.style.background = `conic-gradient(#f2f2f7 ${deg}deg, rgba(242,242,247,.15) 0deg)`;
+  }
+
+  function render() {
+    timeEl.textContent = formatTime(remaining);
+    statusEl.textContent = running ? "Running" : "Paused";
+
+    if (currentTurn <= TOTAL_TURNS) {
+      turnLineEl.textContent = `Turn ${currentTurn} / ${TOTAL_TURNS}`;
+    } else {
+      turnLineEl.textContent = `Finished`;
+    }
+
+    totalEl.textContent = totalScore;
+    wrongEl.textContent = `${wrongAttempts} / 3`;
+    streakEl.textContent = streak;
+    lastEl.textContent = (turnScores.length ? turnScores[turnScores.length-1] : "—");
+
+    startBtn.textContent = running ? "Pause" : "Start";
+
+    const finished = currentTurn > TOTAL_TURNS;
+    startBtn.disabled = finished;
+    resetBtn.disabled = finished;
+    correctBtn.disabled = finished;
+    wrongBtn.disabled = finished || !running;
+
+    updateCircle();
+    renderTurnsList();
+  }
+
+  function renderTurnsList() {
+    if (!turnScores.length) {
+      turnsListEl.innerHTML = `<div class="muted">No turns yet.</div>`;
+      return;
+    }
+    turnsListEl.innerHTML = turnScores.map((s, i) => `
+      <div class="item">
+        <div>Turn ${i+1}</div>
+        <div style="font-variant-numeric: tabular-nums; font-weight:800;">${s} pts</div>
+      </div>
+    `).join("");
+  }
+
+  // Dynamic bonus
+  function timeBonus(remainingSeconds) {
+    const clamped = Math.max(0, Math.min(TURN_DURATION, remainingSeconds));
+    const ratio = clamped / TURN_DURATION;      // 0..1
+    const timeFactor = Math.pow(ratio, 1.7);    // nonlinear
+    return Math.round(timeFactor * 12);         // ~0..12
+  }
+
+  function commitTurnScore(score) {
+    turnScores.push(score);
+    totalScore += score;
+  }
+
+  function advanceTurnOrEnd() {
+    if (currentTurn >= TOTAL_TURNS) {
+      currentTurn = TOTAL_TURNS + 1;
+      running = false;
+      showSummary();
+      return;
+    }
+    currentTurn += 1;
+    resetTurnState();
+    running = true; // auto start next turn
+  }
+
+  function resetTurnState() {
+    remaining = TURN_DURATION;
+    wrongAttempts = 0;
+    lastCueSecond = 999;
+  }
+
+  function newGame() {
+    hideSummary();
+    running = false;
+    currentTurn = 1;
+    remaining = TURN_DURATION;
+    wrongAttempts = 0;
+    turnScores = [];
+    totalScore = 0;
+    streak = 0;
+    lastCueSecond = 999;
+    render();
+  }
+
+  function handleCorrect() {
+    if (currentTurn > TOTAL_TURNS) return;
+
+    running = false;
+
+    let score = 0;
+    if (wrongAttempts >= 3) {
+      score = 0;
+      streak = 0;
+    } else {
+      const bonus = timeBonus(remaining);
+      const streakBonus = Math.min(streak, 3);
+      score = Math.max(0, 5 + bonus + streakBonus - (2 * wrongAttempts));
+      streak += 1;
+    }
+
+    successFeedback();
+    commitTurnScore(score);
+    advanceTurnOrEnd();
+    render();
+  }
+
+  function handleWrong() {
+    if (currentTurn > TOTAL_TURNS) return;
+    if (!running) return;
+
+    wrongAttempts += 1;
+
+    if (wrongAttempts >= 3) {
+      running = false;
+      streak = 0;
+      failureFeedback();
+      commitTurnScore(0);
+      advanceTurnOrEnd();
+    } else {
+      lightTap();
+      beep(440, 40, 0.02);
+    }
+    render();
+  }
+
+  // 5-second countdown cues
+  function playLastSecondsCuesIfNeeded() {
+    const sec = Math.ceil(remaining);
+    if (sec < 1 || sec > 5) return;
+    if (sec === lastCueSecond) return;
+    lastCueSecond = sec;
+
+    // Different pitch per second (feels game-y)
+    const freqMap = {5: 660, 4: 700, 3: 740, 2: 780, 1: 820};
+    beep(freqMap[sec] || 700, 55, 0.03);
+    lightTap();
+  }
+
+  // Animation loop
+  function tick(ts) {
+    if (!lastTick) lastTick = ts;
+    const dt = (ts - lastTick) / 1000;
+    lastTick = ts;
+
+    if (running) {
+      playLastSecondsCuesIfNeeded();
+
+      remaining -= dt;
+      if (remaining <= 0) {
+        remaining = 0;
+        running = false;
+        streak = 0;
+        failureFeedback();
+        commitTurnScore(0);
+        advanceTurnOrEnd();
+      }
+      render();
+    }
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  // Summary modal
+  function grade(score) {
+    // rough max ~100
+    if (score >= 90) return "S";
+    if (score >= 75) return "A";
+    if (score >= 60) return "B";
+    if (score >= 45) return "C";
+    if (score >= 25) return "D";
+    return "E";
+  }
+
+  function showSummary() {
+    sumTotal.textContent = totalScore;
+    sumGrade.textContent = grade(totalScore);
+
+    const rows = turnScores.map((s,i) => `
+      <div class="item">
+        <div>Turn ${i+1}</div>
+        <div style="font-weight:900; font-variant-numeric: tabular-nums;">${s} pts</div>
+      </div>
+    `).join("");
+
+    sumTurns.innerHTML = rows || `<div class="muted">No turns.</div>`;
+    modalBack.style.display = "flex";
+  }
+
+  function hideSummary() {
+    modalBack.style.display = "none";
+  }
+
+  // Buttons
+  startBtn.addEventListener("click", async () => {
+    if (currentTurn > TOTAL_TURNS) return;
+
+    // On iOS, audio can require a user gesture; this is one.
+    if (soundsToggle.checked) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") await audioCtx.resume();
+      } catch {}
+    }
+
+    running = !running;
+    lastTick = null;
+    render();
+  });
+
+  resetBtn.addEventListener("click", () => {
+    running = false;
+    resetTurnState();
+    render();
+  });
+
+  correctBtn.addEventListener("click", handleCorrect);
+  wrongBtn.addEventListener("click", handleWrong);
+  newBtn.addEventListener("click", newGame);
+  modalNew.addEventListener("click", newGame);
+
+  // Start loop
+  render();
+  rafId = requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
